@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'package:apicallingdemo/models/user.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 void main() => runApp(const MyApp());
 
@@ -24,7 +26,7 @@ class _MyAppState extends State<MyApp> {
       title: 'Material App',
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('Material App Bar'),
+          title: const Text('The MovieDB'),
         ),
         body: const HttpScreen(),
       ),
@@ -32,9 +34,14 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
-class HttpScreen extends StatelessWidget {
+class HttpScreen extends StatefulWidget {
   const HttpScreen({Key? key}) : super(key: key);
 
+  @override
+  State<HttpScreen> createState() => _HttpScreenState();
+}
+
+class _HttpScreenState extends State<HttpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -43,25 +50,70 @@ class HttpScreen extends StatelessWidget {
           future: getUser(),
           builder: (context, snapshot) {
             if (snapshot.hasData) {
-              List posts = snapshot.data;
-              print(posts);
+              List<Result> posts = snapshot.data;
               return ListView.builder(
                 itemCount: posts.length,
                 itemBuilder: (context, index) {
                   return Card(
                     elevation: 4,
-                    child: ListTile(
-                      title: Text(
-                        posts[index]['poster_path'],
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(''),
+                    child: Row(
+                      children: [
+                        Container(
+                          margin: EdgeInsets.all(5),
+                          height: 220,
+                          width: 146,
+                          child: CachedNetworkImage(
+                            imageUrl: 'https://image.tmdb.org/t/p/w500${posts[index].posterPath}',
+                            errorWidget: (context, url, error) => const Icon(Icons.error),
+                            progressIndicatorBuilder: (context, url, progress) => Center(
+                              child: CircularProgressIndicator(
+                                value: progress.progress,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          margin: const EdgeInsets.only(left: 10),
+                          child: Column(
+                            children: [
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                width: 200,
+                                child: Text(
+                                  posts[index].title,
+                                  overflow: TextOverflow.fade,
+                                  maxLines: 2,
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 200,
+                                child: Text(
+                                  posts[index].overview,
+                                  overflow: TextOverflow.fade,
+                                  maxLines: 7,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 },
               );
             } else if (snapshot.hasError) {
-              return Text(snapshot.error.toString(), style: const TextStyle(fontSize: 16),);
+              return Text(
+                snapshot.error.toString(),
+                style: const TextStyle(fontSize: 16),
+              );
             }
             return const CircularProgressIndicator();
           },
@@ -71,13 +123,12 @@ class HttpScreen extends StatelessWidget {
   }
 }
 
-
-Future<dynamic> getUser() async {
-  const url = 'https://api.themoviedb.org/3/discover/movie?sort_by=popularity.desc&api_key=4cfe6fa1a4e1f45fbffc0c62df06ba87&page=1';
+Future<List<Result>> getUser() async {
+  const url = 'https://api.themoviedb.org/3/movie/popular?api_key=b45cce70bce060e172f3dd4d7f839c55&language=en-US';
   Response response = await get(Uri.parse(url));
 
-  var jsonUser = jsonDecode(response.body);
-  var data = jsonUser['results'];
-  return data;
-
+  var jsonUser = response.body;
+  var data = jsonUser;
+  final user = userFromJson(data);
+  return user.results;
 }
