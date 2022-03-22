@@ -52,7 +52,7 @@ class HttpScreen extends StatelessWidget {
                     elevation: 4,
                     child: ListTile(
                       title: Text(
-                        posts[index]['title'],
+                        posts[index]['poster_path'],
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       subtitle: Text(''),
