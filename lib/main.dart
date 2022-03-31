@@ -1,15 +1,71 @@
-import 'dart:convert';
-import 'package:apicallingdemo/models/user.dart';
+import 'package:apicallingdemo/pages/Home.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart';
-import 'package:http/http.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:workmanager/workmanager.dart';
 
-void main() => runApp(const MyApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Color(0xFF87cca5), // transparent status bar
+  ));
+  await Firebase.initializeApp();
+  // Workmanager().initialize(
+  //     callbackDispatcher,
+  //     isInDebugMode: false
+  // );
+  // Workmanager().registerPeriodicTask(
+  //   "2",
+  //   "simplePeriodicTask",
+  //   frequency: const Duration(seconds: 10),
+  // );
+  runApp(const MyApp());
+}
 
-late ScrollController controller;
+// void callbackDispatcher() {
+//   Workmanager().executeTask((task, inputData) {
+//
+//     // initialise the plugin of flutterlocalnotifications.
+//     FlutterLocalNotificationsPlugin flip = FlutterLocalNotificationsPlugin();
+//
+//     // app_icon needs to be a added as a drawable
+//     // resource to the Android head project.
+//     var android = const AndroidInitializationSettings('@mipmap/ic_launcher');
+//     var iOS = const IOSInitializationSettings();
+//
+//     // initialise settings for both Android and iOS device.
+//     var settings = InitializationSettings(android: android, iOS: iOS);
+//     flip.initialize(settings);
+//     _showNotificationWithDefaultSound(flip);
+//     return Future.value(true);
+//   });
+// }
 
-var modellist;
+// Future _showNotificationWithDefaultSound(flip) async {
+//
+//   // Show a notification after every 15 minute with the first
+//   // appearance happening a minute after invoking the method
+//   var androidPlatformChannelSpecifics = const AndroidNotificationDetails(
+//       'your channel id',
+//       'your channel name',
+//       importance: Importance.max,
+//       priority: Priority.high
+//   );
+//   var iOSPlatformChannelSpecifics = const IOSNotificationDetails();
+//
+//   // initialise channel platform for both Android and iOS device.
+//   var platformChannelSpecifics = NotificationDetails(
+//       android: androidPlatformChannelSpecifics,
+//       iOS: iOSPlatformChannelSpecifics
+//   );
+//   await flip.show(0, 'GeeksforGeeks',
+//       'Your are one step away to connect with GeeksforGeeks',
+//       platformChannelSpecifics, payload: 'Default_Sound'
+//   );
+// }
 
 class MyApp extends StatefulWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -19,116 +75,40 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  
+  late FirebaseMessaging messaging;
+  @override
+  void initState() {
+    super.initState();
+    messaging = FirebaseMessaging.instance;
+    messaging.getToken().then((value) {
+      if (kDebugMode) {
+        print(value);
+      }
+    });
+    FirebaseMessaging.onMessage.listen((RemoteMessage event) {
+      if (kDebugMode) {
+        print("message recieved");
+        print(event.notification!.body);
+      }
+    });
+    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      if (kDebugMode) {
+        print('Message clicked!');
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Material App',
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('The MovieDB'),
-        ),
-        body: const HttpScreen(),
-      ),
+      title: 'The Movie DB',
+      home: Home(),
     );
   }
 }
 
-class HttpScreen extends StatefulWidget {
-  const HttpScreen({Key? key}) : super(key: key);
 
-  @override
-  State<HttpScreen> createState() => _HttpScreenState();
-}
 
-class _HttpScreenState extends State<HttpScreen> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: FutureBuilder<dynamic>(
-          future: getUser(),
-          builder: (context, snapshot) {
-            if (snapshot.hasData) {
-              List<Result> posts = snapshot.data;
-              return ListView.builder(
-                itemCount: posts.length,
-                itemBuilder: (context, index) {
-                  return Card(
-                    elevation: 4,
-                    child: Row(
-                      children: [
-                        Container(
-                          margin: EdgeInsets.all(5),
-                          height: 220,
-                          width: 146,
-                          child: CachedNetworkImage(
-                            imageUrl: 'https://image.tmdb.org/t/p/w500${posts[index].posterPath}',
-                            errorWidget: (context, url, error) => const Icon(Icons.error),
-                            progressIndicatorBuilder: (context, url, progress) => Center(
-                              child: CircularProgressIndicator(
-                                value: progress.progress,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Container(
-                          margin: const EdgeInsets.only(left: 10),
-                          child: Column(
-                            children: [
-                              Container(
-                                margin: const EdgeInsets.only(bottom: 10),
-                                width: 200,
-                                child: Text(
-                                  posts[index].title,
-                                  overflow: TextOverflow.fade,
-                                  maxLines: 2,
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                width: 200,
-                                child: Text(
-                                  posts[index].overview,
-                                  overflow: TextOverflow.fade,
-                                  maxLines: 7,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              );
-            } else if (snapshot.hasError) {
-              return Text(
-                snapshot.error.toString(),
-                style: const TextStyle(fontSize: 16),
-              );
-            }
-            return const CircularProgressIndicator();
-          },
-        ),
-      ),
-    );
-  }
-}
-
-Future<List<Result>> getUser() async {
-  const url = 'https://api.themoviedb.org/3/movie/popular?api_key=b45cce70bce060e172f3dd4d7f839c55&language=en-US';
-  Response response = await get(Uri.parse(url));
-
-  var jsonUser = response.body;
-  var data = jsonUser;
-  final user = userFromJson(data);
-  return user.results;
-}
